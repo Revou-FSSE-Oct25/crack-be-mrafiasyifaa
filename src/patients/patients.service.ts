@@ -1,0 +1,93 @@
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreatePatientDto } from './dto/create-patient.dto';
+import { AssignPatientDto } from './dto/assign-patient.dto';
+import { Role } from '../common/enums/role.enum';
+
+function generateMedRecNo(birthDate: Date): string {
+  const yy = String(new Date().getFullYear()).slice(-2);
+  const dd = String(birthDate.getDate()).padStart(2, '0');
+  const mm = String(birthDate.getMonth() + 1).padStart(2, '0');
+  const bdYY = String(birthDate.getFullYear()).slice(-2);
+  const suffix = String(Math.floor(10 + Math.random() * 90));
+  return `${yy}${dd}${mm}${bdYY}${suffix}`;
+}
+
+@Injectable()
+export class PatientsService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(doctorId: string, dto: CreatePatientDto) {
+    let medRecNo: string;
+    let isUnique = false;
+
+    const { birthDate: birthDateStr, ...rest } = dto;
+    const birthDate = new Date(birthDateStr);
+
+    while (!isUnique) {
+      medRecNo = generateMedRecNo(birthDate);
+      const existing = await this.prisma.patient.findUnique({ where: { medRecNo } });
+      if (!existing) isUnique = true;
+    }
+
+    return this.prisma.patient.create({
+      data: { ...rest, birthDate, medRecNo: medRecNo!, doctorId },
+    });
+  }
+
+  async assignExisting(doctorId: string, dto: AssignPatientDto) {
+    const patient = await this.prisma.patient.findUnique({
+      where: { medRecNo: dto.medRecNo },
+    });
+
+    if (!patient) {
+      throw new NotFoundException(`Pasien dengan No. RM ${dto.medRecNo} tidak ditemukan!`);
+    }
+
+    if (patient.doctorId === doctorId) {
+      throw new ConflictException('Pasien telah terdaftar di daftar Anda!');
+    }
+
+    return this.prisma.patient.update({
+      where: { id: patient.id },
+      data: { doctorId },
+    });
+  }
+
+  async findAll(userId: string, userRole: string) {
+    if (userRole === Role.ADMIN_VPRS) {
+      return this.prisma.patient.findMany({
+        include: { doctor: { select: { id: true, name: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    return this.prisma.patient.findMany({
+      where: { doctorId: userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOne(id: string, userId: string, userRole: string) {
+    const patient = await this.prisma.patient.findUnique({
+      where: { id },
+      include: {
+        doctor: { select: { id: true, name: true, email: true } },
+        conditionLogs: { orderBy: { createdAt: 'desc' }, take: 10 },
+      },
+    });
+
+    if (!patient) throw new NotFoundException('Pasien tidak ditemukan!');
+
+    if (userRole !== Role.ADMIN_VPRS && patient.doctorId !== userId) {
+      throw new ForbiddenException('Akses Anda ditolak!');
+    }
+
+    return patient;
+  }
+}

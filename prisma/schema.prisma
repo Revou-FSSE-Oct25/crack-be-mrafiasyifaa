@@ -72,7 +72,7 @@ model Patient {
   id           String          @id @default(cuid())
   medRecNo     String          @unique
   name         String
-  age          Int
+  birthDate    DateTime
   gender       PatientGender
   address      String
   diagnosis    String
