@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -10,5 +5,199 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DOCTOR
+  ADMIN_VPRS
+}
+
+enum AntibioticCategory {
+  KOMERSIAL
+  DIAWASI
+  RISET
+}
+
+enum AntibioticForm {
+  TABLET
+  KAPSUL
+  SIRUP
+  INJEKSI
+  SALEP
+  INFUS
+}
+
+enum PatientGender {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum PatientCondition {
+  STABIL
+  MEMBAIK
+  MEMBURUK
+  SELESAI
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  REQUEST_BARU
+  REQUEST_DISETUJUI
+  REQUEST_DITOLAK
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedPatients    Patient[]             @relation("DoctorPatients")
+  antibioticRequests  AntibioticRequest[]   @relation("DoctorRequests")
+  reviewedRequests    AntibioticRequest[]   @relation("AdminReviews")
+  notifications       Notification[]
+  conditionLogs       PatientConditionLog[]
+
+  @@map("users")
+}
+
+model Patient {
+  id           String          @id @default(cuid())
+  medRecNo     String          @unique
+  name         String
+  age          Int
+  gender       PatientGender
+  address      String
+  diagnosis    String
+  condition    PatientCondition @default(STABIL)
+  doctorId     String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  doctor             User                  @relation("DoctorPatients", fields: [doctorId], references: [id])
+  antibioticRequests AntibioticRequest[]
+  conditionLogs      PatientConditionLog[]
+
+  @@map("patients")
+}
+
+model Antibiotic {
+  id          String             @id @default(cuid())
+  name        String
+  description String?
+  category    AntibioticCategory
+  form        AntibioticForm
+  stock       Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  requests AntibioticRequest[]
+
+  @@map("antibiotics")
+}
+
+model AntibioticRequest {
+  id           String        @id @default(cuid())
+  doctorId     String
+  patientId    String
+  antibioticId String
+  dosage       String
+  frequency    String?
+  startDate    DateTime?
+  endDate      DateTime?
+  notes        String?
+  status       RequestStatus @default(PENDING)
+  reviewedById String?
+  reviewNotes  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  doctor       User         @relation("DoctorRequests", fields: [doctorId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id])
+  antibiotic   Antibiotic   @relation(fields: [antibioticId], references: [id])
+  reviewedBy   User?        @relation("AdminReviews", fields: [reviewedById], references: [id])
+  clinicalData ClinicalData?
+
+  @@map("antibiotic_requests")
+}
+
+model ClinicalData {
+  id        String @id @default(cuid())
+  requestId String @unique
+
+  // 1. Diagnosis
+  diagnosis String
+
+  // 2. Tanda vital & kondisi umum
+  bloodPressure    String?
+  heartRate        Int?
+  temperature      Float?
+  respiratoryRate  Int?
+  oxygenSaturation Float?
+  generalCondition String?
+
+  // 3. Pemeriksaan fisik
+  physicalExamination String?
+
+  // 4. Laboratorium
+  leukocytes  Float?
+  neutrophils Float?
+  lymphocytes Float?
+  urinalysis  String?
+  ureum       Float?
+  creatinine  Float?
+  sgot        Float?
+  sgpt        Float?
+  albumin     Float?
+
+  // 5. Imaging
+  imagingType   String?
+  imagingResult String?
+
+  // 6. Kultur
+  cultureResult String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  request AntibioticRequest @relation(fields: [requestId], references: [id])
+
+  @@map("clinical_data")
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean          @default(false)
+  referenceId String?
+  createdAt   DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model PatientConditionLog {
+  id        String           @id @default(cuid())
+  patientId String
+  condition PatientCondition
+  notes     String?
+  updatedBy String
+  createdAt DateTime         @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  User    @relation(fields: [updatedBy], references: [id])
+
+  @@map("patient_condition_logs")
 }
