@@ -15,6 +15,7 @@ const requestInclude = {
   patient: { select: { id: true, name: true, medRecNo: true } },
   antibiotic: { select: { id: true, name: true, category: true, form: true } },
   doctor: { select: { id: true, name: true, email: true } },
+  assignedAdmin: { select: { id: true, name: true } },
   reviewedBy: { select: { id: true, name: true } },
   clinicalData: true,
 };
@@ -60,10 +61,15 @@ export class AntibioticRequestsService {
     return request;
   }
 
-  async findAll(userId: string, userRole: string, status?: RequestStatus) {
+  async findAll(userId: string, userRole: string, status?: RequestStatus, unclaimed?: boolean) {
     const where: any = {};
     if (status) where.status = status;
-    if (userRole !== Role.ADMIN_VPRS) where.doctorId = userId;
+
+    if (userRole === Role.ADMIN_VPRS) {
+      if (unclaimed) where.assignedAdminId = null;
+    } else {
+      where.doctorId = userId;
+    }
 
     return this.prisma.antibioticRequest.findMany({
       where,
@@ -87,6 +93,44 @@ export class AntibioticRequestsService {
     return request;
   }
 
+  async claim(id: string, adminId: string) {
+    const request = await this.prisma.antibioticRequest.findUnique({ where: { id } });
+    if (!request) throw new NotFoundException('Request tidak ditemukan');
+
+    if (request.status !== RequestStatus.PENDING) {
+      throw new BadRequestException('Hanya request berstatus PENDING yang dapat di-claim');
+    }
+
+    if (request.assignedAdminId) {
+      throw new BadRequestException('Request ini sudah di-claim oleh admin lain');
+    }
+
+    return this.prisma.antibioticRequest.update({
+      where: { id },
+      data: { assignedAdminId: adminId },
+      include: requestInclude,
+    });
+  }
+
+  async unclaim(id: string, adminId: string) {
+    const request = await this.prisma.antibioticRequest.findUnique({ where: { id } });
+    if (!request) throw new NotFoundException('Request tidak ditemukan');
+
+    if (request.assignedAdminId !== adminId) {
+      throw new ForbiddenException('Anda bukan admin yang meng-claim request ini');
+    }
+
+    if (request.status !== RequestStatus.PENDING) {
+      throw new BadRequestException('Request yang sudah direview tidak dapat di-unclaim');
+    }
+
+    return this.prisma.antibioticRequest.update({
+      where: { id },
+      data: { assignedAdminId: null },
+      include: requestInclude,
+    });
+  }
+
   async review(id: string, adminId: string, dto: ReviewRequestDto) {
     const request = await this.prisma.antibioticRequest.findUnique({
       where: { id },
@@ -96,6 +140,10 @@ export class AntibioticRequestsService {
 
     if (request.status !== RequestStatus.PENDING) {
       throw new BadRequestException('Hanya request berstatus PENDING yang dapat direview');
+    }
+
+    if (request.assignedAdminId !== adminId) {
+      throw new ForbiddenException('Anda harus meng-claim request ini sebelum dapat mereview');
     }
 
     const updated = await this.prisma.antibioticRequest.update({

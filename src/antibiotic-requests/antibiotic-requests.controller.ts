@@ -33,13 +33,26 @@ export class AntibioticRequestsController {
   findAll(
     @CurrentUser() user: any,
     @Query('status') status?: RequestStatus,
+    @Query('unclaimed') unclaimed?: string,
   ) {
-    return this.service.findAll(user.id, user.role, status);
+    return this.service.findAll(user.id, user.role, status, unclaimed === 'true');
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.service.findOne(id, user.id, user.role);
+  }
+
+  @Patch(':id/claim')
+  @Roles(Role.ADMIN_VPRS)
+  claim(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.service.claim(id, user.id);
+  }
+
+  @Patch(':id/unclaim')
+  @Roles(Role.ADMIN_VPRS)
+  unclaim(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.service.unclaim(id, user.id);
   }
 
   @Patch(':id/review')

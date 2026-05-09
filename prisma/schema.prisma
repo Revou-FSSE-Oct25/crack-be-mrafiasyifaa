@@ -61,6 +61,7 @@ model User {
 
   assignedPatients    Patient[]             @relation("DoctorPatients")
   antibioticRequests  AntibioticRequest[]   @relation("DoctorRequests")
+  claimedRequests     AntibioticRequest[]   @relation("AdminClaims")
   reviewedRequests    AntibioticRequest[]   @relation("AdminReviews")
   notifications       Notification[]
   conditionLogs       PatientConditionLog[]
@@ -113,17 +114,19 @@ model AntibioticRequest {
   startDate    DateTime?
   endDate      DateTime?
   notes        String?
-  status       RequestStatus @default(PENDING)
-  reviewedById String?
-  reviewNotes  String?
+  status          RequestStatus @default(PENDING)
+  assignedAdminId String?
+  reviewedById    String?
+  reviewNotes     String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  doctor       User         @relation("DoctorRequests", fields: [doctorId], references: [id])
-  patient      Patient      @relation(fields: [patientId], references: [id])
-  antibiotic   Antibiotic   @relation(fields: [antibioticId], references: [id])
-  reviewedBy   User?        @relation("AdminReviews", fields: [reviewedById], references: [id])
-  clinicalData ClinicalData?
+  doctor         User         @relation("DoctorRequests", fields: [doctorId], references: [id])
+  patient        Patient      @relation(fields: [patientId], references: [id])
+  antibiotic     Antibiotic   @relation(fields: [antibioticId], references: [id])
+  assignedAdmin  User?        @relation("AdminClaims", fields: [assignedAdminId], references: [id])
+  reviewedBy     User?        @relation("AdminReviews", fields: [reviewedById], references: [id])
+  clinicalData   ClinicalData?
 
   @@map("antibiotic_requests")
 }
