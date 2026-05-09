@@ -48,6 +48,7 @@ enum NotificationType {
   REQUEST_BARU
   REQUEST_DISETUJUI
   REQUEST_DITOLAK
+  ANTIBIOTIC_KADALUARSA
 }
 
 model User {
@@ -114,10 +115,11 @@ model AntibioticRequest {
   startDate    DateTime?
   endDate      DateTime?
   notes        String?
-  status          RequestStatus @default(PENDING)
-  assignedAdminId String?
-  reviewedById    String?
-  reviewNotes     String?
+  status            RequestStatus @default(PENDING)
+  assignedAdminId   String?
+  reviewedById      String?
+  reviewNotes       String?
+  expiredNotified   Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
