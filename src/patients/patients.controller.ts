@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { AssignPatientDto } from './dto/assign-patient.dto';
@@ -17,6 +18,8 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Role } from '../common/enums/role.enum';
 
+@ApiTags('Patients')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('patients')
 export class PatientsController {
@@ -24,28 +27,33 @@ export class PatientsController {
 
   @Post()
   @Roles(Role.DOCTOR)
+  @ApiOperation({ summary: '[DOCTOR] Daftarkan pasien baru dengan medRecNo auto-generated' })
   create(@CurrentUser() user: any, @Body() dto: CreatePatientDto) {
     return this.patientsService.create(user.id, dto);
   }
 
   @Post('assign')
   @Roles(Role.DOCTOR)
+  @ApiOperation({ summary: '[DOCTOR] Assign pasien existing ke diri sendiri via No. RM' })
   assignExisting(@CurrentUser() user: any, @Body() dto: AssignPatientDto) {
     return this.patientsService.assignExisting(user.id, dto);
   }
 
   @Get()
+  @ApiOperation({ summary: 'Lihat daftar pasien (Doctor: milik sendiri | Admin: semua)' })
   findAll(@CurrentUser() user: any) {
     return this.patientsService.findAll(user.id, user.role);
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Detail pasien + 10 log kondisi terbaru' })
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.patientsService.findOne(id, user.id, user.role);
   }
 
   @Patch(':id/condition')
   @Roles(Role.DOCTOR)
+  @ApiOperation({ summary: '[DOCTOR] Update kondisi pasien — otomatis membuat condition log' })
   updateCondition(
     @Param('id') id: string,
     @CurrentUser() user: any,
@@ -55,6 +63,7 @@ export class PatientsController {
   }
 
   @Get(':id/condition-logs')
+  @ApiOperation({ summary: 'Riwayat perubahan kondisi pasien (journey)' })
   getConditionLogs(@Param('id') id: string, @CurrentUser() user: any) {
     return this.patientsService.getConditionLogs(id, user.id, user.role);
   }
