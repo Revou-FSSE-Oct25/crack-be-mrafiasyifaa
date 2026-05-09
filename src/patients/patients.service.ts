@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { AssignPatientDto } from './dto/assign-patient.dto';
+import { UpdateConditionDto } from './dto/update-condition.dto';
 import { Role } from '../common/enums/role.enum';
 
 function generateMedRecNo(birthDate: Date): string {
@@ -89,5 +90,45 @@ export class PatientsService {
     }
 
     return patient;
+  }
+
+  async updateCondition(patientId: string, doctorId: string, dto: UpdateConditionDto) {
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, doctorId },
+    });
+
+    if (!patient) throw new ForbiddenException('Pasien tidak ditemukan atau bukan pasien Anda');
+
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.patient.update({
+        where: { id: patientId },
+        data: { condition: dto.condition },
+      }),
+      this.prisma.patientConditionLog.create({
+        data: {
+          patientId,
+          condition: dto.condition,
+          notes: dto.notes,
+          updatedBy: doctorId,
+        },
+      }),
+    ]);
+
+    return updated;
+  }
+
+  async getConditionLogs(patientId: string, userId: string, userRole: string) {
+    const patient = await this.prisma.patient.findUnique({ where: { id: patientId } });
+    if (!patient) throw new NotFoundException('Pasien tidak ditemukan!');
+
+    if (userRole !== Role.ADMIN_VPRS && patient.doctorId !== userId) {
+      throw new ForbiddenException('Akses Anda ditolak!');
+    }
+
+    return this.prisma.patientConditionLog.findMany({
+      where: { patientId },
+      include: { doctor: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }
