@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { ReviewRequestDto } from './dto/review-request.dto';
 import { Role } from '../common/enums/role.enum';
@@ -20,7 +21,10 @@ const requestInclude = {
 
 @Injectable()
 export class AntibioticRequestsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   async create(doctorId: string, dto: CreateRequestDto) {
     const { clinicalData, startDate, endDate, ...requestData } = dto;
@@ -35,7 +39,7 @@ export class AntibioticRequestsService {
     });
     if (!antibiotic) throw new NotFoundException('Antibiotik tidak ditemukan');
 
-    return this.prisma.antibioticRequest.create({
+    const request = await this.prisma.antibioticRequest.create({
       data: {
         ...requestData,
         doctorId,
@@ -45,6 +49,15 @@ export class AntibioticRequestsService {
       },
       include: requestInclude,
     });
+
+    await this.notifications.notifyAllAdmins(
+      'REQUEST_BARU',
+      'Request Antibiotik Baru',
+      `Dr. ${request.doctor.name} mengajukan request ${antibiotic.name} untuk pasien ${patient.name}`,
+      request.id,
+    );
+
+    return request;
   }
 
   async findAll(userId: string, userRole: string, status?: RequestStatus) {
@@ -75,14 +88,17 @@ export class AntibioticRequestsService {
   }
 
   async review(id: string, adminId: string, dto: ReviewRequestDto) {
-    const request = await this.prisma.antibioticRequest.findUnique({ where: { id } });
+    const request = await this.prisma.antibioticRequest.findUnique({
+      where: { id },
+      include: { antibiotic: true, patient: true },
+    });
     if (!request) throw new NotFoundException('Request tidak ditemukan');
 
     if (request.status !== RequestStatus.PENDING) {
       throw new BadRequestException('Hanya request berstatus PENDING yang dapat direview');
     }
 
-    return this.prisma.antibioticRequest.update({
+    const updated = await this.prisma.antibioticRequest.update({
       where: { id },
       data: {
         status: dto.status,
@@ -91,5 +107,16 @@ export class AntibioticRequestsService {
       },
       include: requestInclude,
     });
+
+    const isApproved = dto.status === 'APPROVED';
+    await this.notifications.create(
+      request.doctorId,
+      isApproved ? 'REQUEST_DISETUJUI' : 'REQUEST_DITOLAK',
+      isApproved ? 'Request Disetujui' : 'Request Ditolak',
+      `Request ${request.antibiotic.name} untuk pasien ${request.patient.name} ${isApproved ? 'telah disetujui' : 'ditolak'}`,
+      request.id,
+    );
+
+    return updated;
   }
 }
