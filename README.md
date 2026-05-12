@@ -1,98 +1,138 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# AMS — Antibiotic Management System API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Overview
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+AMS (Antibiotic Management System) is a RESTful API for hospital antibiotic management. It handles antibiotic request workflows between doctors and pharmacy admins (VPRS), including patient management, clinical data submission, admin claim/review system, condition monitoring, and automated expiry notifications.
 
-## Description
+**Live API**: TBD
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+**API Documentation (Swagger)**: TBD/docsv1
 
-## Project setup
+**ERD**: TBD
 
-```bash
-$ npm install
-```
+---
 
-## Compile and run the project
+## Features
 
-```bash
-# development
-$ npm run start
+### Authentication
+- `POST /auth/register` — Register as Doctor or Admin VPRS
+- `POST /auth/login` — Login and receive JWT token
 
-# watch mode
-$ npm run start:dev
+### Patients
+- `POST /patients` — Register new patient with auto-generated No. RM (DOCTOR)
+- `POST /patients/assign` — Assign existing patient via No. RM (DOCTOR)
+- `GET /patients` — List patients (Doctor: own | Admin: all)
+- `GET /patients/:id` — Patient detail with condition logs
+- `PATCH /patients/:id/condition` — Update patient condition, auto-logs to history (DOCTOR)
+- `GET /patients/:id/condition-logs` — Full condition history
 
-# production mode
-$ npm run start:prod
-```
+### Antibiotics
+- `POST /antibiotics` — Add antibiotic (ADMIN)
+- `GET /antibiotics` — List all antibiotics
+- `GET /antibiotics/:id` — Antibiotic detail
+- `PATCH /antibiotics/:id` — Update antibiotic (ADMIN)
+- `DELETE /antibiotics/:id` — Delete antibiotic (ADMIN)
 
-## Run tests
+### Antibiotic Requests
+- `POST /antibiotic-requests` — Submit request with clinical data (DOCTOR)
+- `GET /antibiotic-requests` — List requests with optional `?status=` and `?unclaimed=true` filter
+- `GET /antibiotic-requests/:id` — Request detail with full clinical data
+- `PATCH /antibiotic-requests/:id/claim` — Claim request from pool (ADMIN)
+- `PATCH /antibiotic-requests/:id/unclaim` — Release claim back to pool (ADMIN)
+- `PATCH /antibiotic-requests/:id/review` — Approve or reject request (ADMIN, must claim first)
 
-```bash
-# unit tests
-$ npm run test
+### Notifications
+- `GET /notifications` — List own notifications
+- `PATCH /notifications/:id/read` — Mark one as read
+- `PATCH /notifications/read-all` — Mark all as read
 
-# e2e tests
-$ npm run test:e2e
+---
 
-# test coverage
-$ npm run test:cov
-```
+## Technologies Used
 
-## Deployment
+| Category         | Technology                         |
+|------------------|------------------------------------|
+| Framework        | NestJS 11                          |
+| Language         | TypeScript                         |
+| ORM              | Prisma 7                           |
+| Database         | PostgreSQL (Supabase)              |
+| Authentication   | JWT (@nestjs/jwt), bcrypt          |
+| Validation       | class-validator, class-transformer |
+| Documentation    | Swagger (@nestjs/swagger)          |
+| Scheduler        | @nestjs/schedule (cron)            |
+| Deployment       | Render                             |
+| Database Hosting | Supabase                           |
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+---
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## How to Run Locally
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+### Prerequisites
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+- Node.js 18+
+- PostgreSQL database
 
-## Resources
+### Installation
 
-Check out a few resources that may come in handy when working with NestJS:
+1. Clone the repository
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+   ```bash
+   git clone https://github.com/Revou-FSSE-Oct25/crack-be-mrafiasyifaa.git
+   cd crack-be-mrafiasyifaa
+   ```
 
-## Support
+2. Install dependencies
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+   ```bash
+   npm install
+   ```
 
-## Stay in touch
+3. Set up environment variables — create a `.env` file:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+   ```
+   DATABASE_URL="postgresql://user:password@host:5432/dbname"
+   JWT_SECRET="your-secret-key"
+   JWT_EXPIRES_IN="7d"
+   PORT=3000
+   ```
 
-## License
+4. Run database migration
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+   ```bash
+   npx prisma migrate dev
+   ```
+
+   For production:
+   ```bash
+   npx prisma migrate deploy
+   ```
+
+5. Start the development server
+
+   ```bash
+   npm run start:dev
+   ```
+
+6. API is available at `http://localhost:3000/api`
+   Swagger docs at `http://localhost:3000/docsv1`
+
+---
+
+## Environment Variables
+
+| Variable         | Description                               |
+|------------------|-------------------------------------------|
+| `DATABASE_URL`   | PostgreSQL connection string              |
+| `JWT_SECRET`     | Secret key for signing JWT tokens         |
+| `JWT_EXPIRES_IN` | JWT expiry duration (default: 7d)         |
+| `PORT`           | Port to run the server on (default: 3000) |
+
+---
+
+## Notes
+
+- ADMIN_VPRS role is set at registration. No manual DB intervention needed.
+- No. RM (medical record number) is auto-generated: format `YYDDMMyyXX` (10 digits).
+- `imagingResult` and `cultureResult` in clinical data accept URL strings — file upload is handled directly from the frontend to Supabase Storage.
+- Cron job runs daily at midnight to notify doctors when antibiotic end dates have passed.
+- Admin must claim a request before being able to approve or reject it (claim system).
