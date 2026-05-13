@@ -1,4 +1,4 @@
 export enum Role {
   DOCTOR = 'DOCTOR',
-  ADMIN_VPRS = 'ADMIN_VPRS',
+  ADMIN_PPRA = 'ADMIN_PPRA',
 }

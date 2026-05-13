@@ -65,7 +65,7 @@ export class AntibioticRequestsService {
     const where: any = {};
     if (status) where.status = status;
 
-    if (userRole === Role.ADMIN_VPRS) {
+    if (userRole === Role.ADMIN_PPRA) {
       if (unclaimed) where.assignedAdminId = null;
     } else {
       where.doctorId = userId;
@@ -86,7 +86,7 @@ export class AntibioticRequestsService {
 
     if (!request) throw new NotFoundException('Request tidak ditemukan');
 
-    if (userRole !== Role.ADMIN_VPRS && request.doctorId !== userId) {
+    if (userRole !== Role.ADMIN_PPRA && request.doctorId !== userId) {
       throw new ForbiddenException('Anda tidak memiliki akses ke request ini');
     }
 

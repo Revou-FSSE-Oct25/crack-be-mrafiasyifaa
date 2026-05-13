@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAntibioticDto } from './dto/create-antibiotic.dto';
 import { UpdateAntibioticDto } from './dto/update-antibiotic.dto';
+import { AntibioticCategory, AntibioticForm } from '@prisma/client';
 
 @Injectable()
 export class AntibioticsService {
@@ -11,8 +12,15 @@ export class AntibioticsService {
     return this.prisma.antibiotic.create({ data: dto });
   }
 
-  findAll() {
-    return this.prisma.antibiotic.findMany({ orderBy: { name: 'asc' } });
+  findAll(search?: string, category?: AntibioticCategory, form?: AntibioticForm) {
+    return this.prisma.antibiotic.findMany({
+      where: {
+        ...(search && { name: { contains: search, mode: 'insensitive' } }),
+        ...(category && { category }),
+        ...(form && { form }),
+      },
+      orderBy: { name: 'asc' },
+    });
   }
 
   async findOne(id: string) {

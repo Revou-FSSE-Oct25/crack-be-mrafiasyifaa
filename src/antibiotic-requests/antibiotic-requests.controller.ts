@@ -52,21 +52,21 @@ export class AntibioticRequestsController {
   }
 
   @Patch(':id/claim')
-  @Roles(Role.ADMIN_VPRS)
+  @Roles(Role.ADMIN_PPRA)
   @ApiOperation({ summary: '[ADMIN] Claim request dari pool untuk direview' })
   claim(@Param('id') id: string, @CurrentUser() user: any) {
     return this.service.claim(id, user.id);
   }
 
   @Patch(':id/unclaim')
-  @Roles(Role.ADMIN_VPRS)
+  @Roles(Role.ADMIN_PPRA)
   @ApiOperation({ summary: '[ADMIN] Lepas claim — kembalikan request ke pool' })
   unclaim(@Param('id') id: string, @CurrentUser() user: any) {
     return this.service.unclaim(id, user.id);
   }
 
   @Patch(':id/review')
-  @Roles(Role.ADMIN_VPRS)
+  @Roles(Role.ADMIN_PPRA)
   @ApiOperation({ summary: '[ADMIN] Approve atau reject request (harus claim dulu)' })
   review(
     @Param('id') id: string,

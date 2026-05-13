@@ -5,9 +5,11 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { PatientCondition } from '@prisma/client';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { AssignPatientDto } from './dto/assign-patient.dto';
@@ -40,9 +42,15 @@ export class PatientsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lihat daftar pasien (Doctor: milik sendiri | Admin: semua)' })
-  findAll(@CurrentUser() user: any) {
-    return this.patientsService.findAll(user.id, user.role);
+  @ApiOperation({ summary: 'Lihat daftar pasien dengan filter opsional (Doctor: milik sendiri | Admin: semua)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Cari berdasarkan nama atau No. RM' })
+  @ApiQuery({ name: 'condition', enum: PatientCondition, required: false })
+  findAll(
+    @CurrentUser() user: any,
+    @Query('search') search?: string,
+    @Query('condition') condition?: PatientCondition,
+  ) {
+    return this.patientsService.findAll(user.id, user.role, search, condition);
   }
 
   @Get(':id')

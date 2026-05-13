@@ -9,6 +9,7 @@ import { CreatePatientDto } from './dto/create-patient.dto';
 import { AssignPatientDto } from './dto/assign-patient.dto';
 import { UpdateConditionDto } from './dto/update-condition.dto';
 import { Role } from '../common/enums/role.enum';
+import { PatientCondition } from '@prisma/client';
 
 function generateMedRecNo(birthDate: Date): string {
   const yy = String(new Date().getFullYear()).slice(-2);
@@ -60,16 +61,27 @@ export class PatientsService {
     });
   }
 
-  async findAll(userId: string, userRole: string) {
-    if (userRole === Role.ADMIN_VPRS) {
+  async findAll(userId: string, userRole: string, search?: string, condition?: PatientCondition) {
+    const baseWhere = {
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' as const } },
+          { medRecNo: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }),
+      ...(condition && { condition }),
+    };
+
+    if (userRole === Role.ADMIN_PPRA) {
       return this.prisma.patient.findMany({
+        where: baseWhere,
         include: { doctor: { select: { id: true, name: true, email: true } } },
         orderBy: { createdAt: 'desc' },
       });
     }
 
     return this.prisma.patient.findMany({
-      where: { doctorId: userId },
+      where: { ...baseWhere, doctorId: userId },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -85,7 +97,7 @@ export class PatientsService {
 
     if (!patient) throw new NotFoundException('Pasien tidak ditemukan!');
 
-    if (userRole !== Role.ADMIN_VPRS && patient.doctorId !== userId) {
+    if (userRole !== Role.ADMIN_PPRA && patient.doctorId !== userId) {
       throw new ForbiddenException('Akses Anda ditolak!');
     }
 
@@ -121,7 +133,7 @@ export class PatientsService {
     const patient = await this.prisma.patient.findUnique({ where: { id: patientId } });
     if (!patient) throw new NotFoundException('Pasien tidak ditemukan!');
 
-    if (userRole !== Role.ADMIN_VPRS && patient.doctorId !== userId) {
+    if (userRole !== Role.ADMIN_PPRA && patient.doctorId !== userId) {
       throw new ForbiddenException('Akses Anda ditolak!');
     }
 

@@ -14,7 +14,7 @@ export class NotificationsService {
 
   async notifyAllAdmins(type: NotificationType, title: string, message: string, referenceId?: string) {
     const admins = await this.prisma.user.findMany({
-      where: { role: 'ADMIN_VPRS' },
+      where: { role: 'ADMIN_PPRA' },
       select: { id: true },
     });
 

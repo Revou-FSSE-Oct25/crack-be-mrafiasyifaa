@@ -6,9 +6,11 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { AntibioticCategory, AntibioticForm } from '@prisma/client';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { AntibioticsService } from './antibiotics.service';
 import { CreateAntibioticDto } from './dto/create-antibiotic.dto';
 import { UpdateAntibioticDto } from './dto/update-antibiotic.dto';
@@ -25,16 +27,23 @@ export class AntibioticsController {
   constructor(private readonly antibioticsService: AntibioticsService) {}
 
   @Post()
-  @Roles(Role.ADMIN_VPRS)
+  @Roles(Role.ADMIN_PPRA)
   @ApiOperation({ summary: '[ADMIN] Tambah antibiotik baru' })
   create(@Body() dto: CreateAntibioticDto) {
     return this.antibioticsService.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lihat semua antibiotik (A-Z)' })
-  findAll() {
-    return this.antibioticsService.findAll();
+  @ApiOperation({ summary: 'Lihat semua antibiotik (A-Z) dengan filter opsional' })
+  @ApiQuery({ name: 'search', required: false, description: 'Cari berdasarkan nama' })
+  @ApiQuery({ name: 'category', enum: AntibioticCategory, required: false })
+  @ApiQuery({ name: 'form', enum: AntibioticForm, required: false })
+  findAll(
+    @Query('search') search?: string,
+    @Query('category') category?: AntibioticCategory,
+    @Query('form') form?: AntibioticForm,
+  ) {
+    return this.antibioticsService.findAll(search, category, form);
   }
 
   @Get(':id')
@@ -44,14 +53,14 @@ export class AntibioticsController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN_VPRS)
+  @Roles(Role.ADMIN_PPRA)
   @ApiOperation({ summary: '[ADMIN] Update data antibiotik (semua field opsional)' })
   update(@Param('id') id: string, @Body() dto: UpdateAntibioticDto) {
     return this.antibioticsService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN_VPRS)
+  @Roles(Role.ADMIN_PPRA)
   @ApiOperation({ summary: '[ADMIN] Hapus antibiotik' })
   remove(@Param('id') id: string) {
     return this.antibioticsService.remove(id);
