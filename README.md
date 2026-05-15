@@ -2,49 +2,55 @@
 
 ## Overview
 
-AMS (Antibiotic Management System) is a RESTful API for hospital antibiotic management. It handles antibiotic request workflows between doctors and pharmacy admins (VPRS), including patient management, clinical data submission, admin claim/review system, condition monitoring, and automated expiry notifications.
+AMS (Antibiotic Management System) adalah RESTful API untuk manajemen antibiotik rumah sakit berbasis PPRA (Program Pengendalian Resistensi Antimikroba). Sistem ini mengatur alur pengajuan antibiotik antara dokter (DPJP) dan admin PPRA, termasuk manajemen pasien, pengajuan data klinis, sistem claim/review admin, monitoring kondisi pasien, dan notifikasi otomatis.
 
 **Live API**: TBD
 
 **API Documentation (Swagger)**: TBD/docsv1
 
-**ERD**: TBD
+**API Reference (endpoints + request/response)**: [API_DOCS.md](./API_DOCS.md)
+
+**ERD**: lihat di bawah
 
 ---
 
 ## Features
 
 ### Authentication
-- `POST /auth/register` — Register as Doctor or Admin VPRS
-- `POST /auth/login` — Login and receive JWT token
+- `POST /auth/register` — Daftarkan user baru (Doctor atau Admin PPRA)
+- `POST /auth/login` — Login dan dapatkan JWT token
 
 ### Patients
-- `POST /patients` — Register new patient with auto-generated No. RM (DOCTOR)
-- `POST /patients/assign` — Assign existing patient via No. RM (DOCTOR)
-- `GET /patients` — List patients (Doctor: own | Admin: all)
-- `GET /patients/:id` — Patient detail with condition logs
-- `PATCH /patients/:id/condition` — Update patient condition, auto-logs to history (DOCTOR)
-- `GET /patients/:id/condition-logs` — Full condition history
+- `POST /patients` — Daftarkan pasien baru dengan No. RM auto-generated `[DOCTOR]`
+- `POST /patients/assign` — Assign pasien existing via No. RM (hanya jika pasien nonaktif) `[DOCTOR]`
+- `GET /patients` — Daftar pasien dengan filter opsional (Doctor: milik sendiri | Admin: semua)
+- `GET /patients/medrec/:medRecNo` — Lookup pasien by No. RM, lintas dokter
+- `GET /patients/:id` — Detail pasien + 10 log kondisi terbaru
+- `PATCH /patients/:id/deactivate` — Nonaktifkan pasien `[DOCTOR]`
+- `PATCH /patients/:id/condition` — Update kondisi pasien, otomatis membuat log `[DOCTOR]`
+- `GET /patients/:id/condition-logs` — Riwayat perubahan kondisi pasien
 
 ### Antibiotics
-- `POST /antibiotics` — Add antibiotic (ADMIN)
-- `GET /antibiotics` — List all antibiotics
-- `GET /antibiotics/:id` — Antibiotic detail
-- `PATCH /antibiotics/:id` — Update antibiotic (ADMIN)
-- `DELETE /antibiotics/:id` — Delete antibiotic (ADMIN)
+- `POST /antibiotics` — Tambah antibiotik `[ADMIN_PPRA]`
+- `GET /antibiotics` — Daftar antibiotik dengan pagination dan filter kategori/form
+- `GET /antibiotics/:id` — Detail antibiotik
+- `PATCH /antibiotics/:id` — Update antibiotik `[ADMIN_PPRA]`
+- `DELETE /antibiotics/:id` — Hapus antibiotik `[ADMIN_PPRA]`
 
 ### Antibiotic Requests
-- `POST /antibiotic-requests` — Submit request with clinical data (DOCTOR)
-- `GET /antibiotic-requests` — List requests with optional `?status=` and `?unclaimed=true` filter
-- `GET /antibiotic-requests/:id` — Request detail with full clinical data
-- `PATCH /antibiotic-requests/:id/claim` — Claim request from pool (ADMIN)
-- `PATCH /antibiotic-requests/:id/unclaim` — Release claim back to pool (ADMIN)
-- `PATCH /antibiotic-requests/:id/review` — Approve or reject request (ADMIN, must claim first)
+- `POST /antibiotic-requests` — Buat request antibiotik beserta clinical data `[DOCTOR]`
+- `GET /antibiotic-requests` — Daftar request dengan filter status, unclaimed, dan patientId
+- `GET /antibiotic-requests/:id` — Detail request + clinical data lengkap
+- `PATCH /antibiotic-requests/:id` — Edit request (hanya jika PENDING) `[DOCTOR]`
+- `DELETE /antibiotic-requests/:id` — Hapus request (hanya jika PENDING) `[DOCTOR]`
+- `PATCH /antibiotic-requests/:id/claim` — Claim request dari pool `[ADMIN_PPRA]`
+- `PATCH /antibiotic-requests/:id/unclaim` — Lepas claim, kembalikan ke pool `[ADMIN_PPRA]`
+- `PATCH /antibiotic-requests/:id/review` — Approve atau reject request `[ADMIN_PPRA]`
 
 ### Notifications
-- `GET /notifications` — List own notifications
-- `PATCH /notifications/:id/read` — Mark one as read
-- `PATCH /notifications/read-all` — Mark all as read
+- `GET /notifications` — Daftar notifikasi milik user yang login
+- `PATCH /notifications/:id/read` — Tandai satu notifikasi sebagai dibaca
+- `PATCH /notifications/read-all` — Tandai semua notifikasi sebagai dibaca
 
 ---
 
@@ -56,7 +62,7 @@ AMS (Antibiotic Management System) is a RESTful API for hospital antibiotic mana
 | Language         | TypeScript                         |
 | ORM              | Prisma 7                           |
 | Database         | PostgreSQL (Supabase)              |
-| Authentication   | JWT (@nestjs/jwt), bcrypt          |
+| Authentication   | JWT (@nestjs/jwt), bcryptjs        |
 | Validation       | class-validator, class-transformer |
 | Documentation    | Swagger (@nestjs/swagger)          |
 | Scheduler        | @nestjs/schedule (cron)            |
@@ -87,7 +93,7 @@ AMS (Antibiotic Management System) is a RESTful API for hospital antibiotic mana
    npm install
    ```
 
-3. Set up environment variables — create a `.env` file:
+3. Set up environment variables — buat file `.env`:
 
    ```
    DATABASE_URL="postgresql://user:password@host:5432/dbname"
@@ -96,25 +102,31 @@ AMS (Antibiotic Management System) is a RESTful API for hospital antibiotic mana
    PORT=3000
    ```
 
-4. Run database migration
+4. Jalankan migrasi database
 
    ```bash
    npx prisma migrate dev
    ```
 
-   For production:
+   Untuk production:
    ```bash
    npx prisma migrate deploy
    ```
 
-5. Start the development server
+5. (Opsional) Seed data antibiotik awal
+
+   ```bash
+   npx ts-node prisma/seed.ts
+   ```
+
+6. Jalankan development server
 
    ```bash
    npm run start:dev
    ```
 
-6. API is available at `http://localhost:3000/api`
-   Swagger docs at `http://localhost:3000/docsv1`
+7. API tersedia di `http://localhost:3000/api`
+   Swagger docs di `http://localhost:3000/docsv1`
 
 ---
 
@@ -129,10 +141,17 @@ AMS (Antibiotic Management System) is a RESTful API for hospital antibiotic mana
 
 ---
 
+## Entity Relationship Diagram
+
+![ERD AMS](./ERD-Diagram-AMS.png)
+
+---
+
 ## Notes
 
-- ADMIN_VPRS role is set at registration. No manual DB intervention needed.
-- No. RM (medical record number) is auto-generated: format `YYDDMMyyXX` (10 digits).
-- `imagingResult` and `cultureResult` in clinical data accept URL strings — file upload is handled directly from the frontend to Supabase Storage.
-- Cron job runs daily at midnight to notify doctors when antibiotic end dates have passed.
-- Admin must claim a request before being able to approve or reject it (claim system).
+- Role `ADMIN_PPRA` dan `DOCTOR` diset saat registrasi. Tidak perlu intervensi DB manual.
+- No. RM (nomor rekam medis) di-generate otomatis: format `YYDDMMyyXX` (10 digit).
+- Sistem DPJP: satu pasien hanya bisa aktif di satu dokter. Untuk pindah dokter, pasien harus dinonaktifkan terlebih dahulu oleh dokter sebelumnya.
+- `imagingResult` dan `cultureResult` pada clinical data menerima URL string — upload file dilakukan langsung dari frontend ke Supabase Storage.
+- Cron job berjalan setiap tengah malam untuk mengirim notifikasi `ANTIBIOTIC_KADALUARSA` ke dokter ketika tanggal selesai antibiotik telah terlewati.
+- Admin harus melakukan claim sebelum bisa approve atau reject request (sistem claim).
