@@ -79,6 +79,7 @@ model Patient {
   address      String
   diagnosis    String
   condition    PatientCondition @default(STABIL)
+  isActive     Boolean          @default(true)
   doctorId     String
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
