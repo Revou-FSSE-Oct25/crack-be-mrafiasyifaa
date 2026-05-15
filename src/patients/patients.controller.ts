@@ -36,7 +36,7 @@ export class PatientsController {
 
   @Post('assign')
   @Roles(Role.DOCTOR)
-  @ApiOperation({ summary: '[DOCTOR] Assign pasien existing ke diri sendiri via No. RM' })
+  @ApiOperation({ summary: '[DOCTOR] Assign pasien existing via No. RM — hanya bisa jika pasien isActive: false. Pasien aktif di dokter lain akan ditolak (409).' })
   assignExisting(@CurrentUser() user: any, @Body() dto: AssignPatientDto) {
     return this.patientsService.assignExisting(user.id, dto);
   }
@@ -45,12 +45,30 @@ export class PatientsController {
   @ApiOperation({ summary: 'Lihat daftar pasien dengan filter opsional (Doctor: milik sendiri | Admin: semua)' })
   @ApiQuery({ name: 'search', required: false, description: 'Cari berdasarkan nama atau No. RM' })
   @ApiQuery({ name: 'condition', enum: PatientCondition, required: false })
+  @ApiQuery({ name: 'limit', required: false, description: 'Batasi jumlah hasil (berguna untuk combobox/autocomplete)' })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean, description: 'Default true. Kirim false untuk lihat pasien nonaktif.' })
   findAll(
     @CurrentUser() user: any,
     @Query('search') search?: string,
     @Query('condition') condition?: PatientCondition,
+    @Query('limit') limit?: string,
+    @Query('isActive') isActive?: string,
   ) {
-    return this.patientsService.findAll(user.id, user.role, search, condition);
+    const isActiveParsed = isActive === undefined ? undefined : isActive === 'true';
+    return this.patientsService.findAll(user.id, user.role, search, condition, limit ? parseInt(limit) : undefined, isActiveParsed);
+  }
+
+  @Get('medrec/:medRecNo')
+  @ApiOperation({ summary: 'Lookup pasien by No. RM — lintas dokter, untuk fitur assign' })
+  findByMedRecNo(@Param('medRecNo') medRecNo: string) {
+    return this.patientsService.findByMedRecNo(medRecNo);
+  }
+
+  @Patch(':id/deactivate')
+  @Roles(Role.DOCTOR)
+  @ApiOperation({ summary: '[DOCTOR] Nonaktifkan pasien — pasien tidak muncul di list aktif' })
+  deactivate(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.patientsService.deactivate(id, user.id);
   }
 
   @Get(':id')

@@ -51,17 +51,33 @@ export class PatientsService {
       throw new NotFoundException(`Pasien dengan No. RM ${dto.medRecNo} tidak ditemukan!`);
     }
 
-    if (patient.doctorId === doctorId) {
+    if (patient.isActive && patient.doctorId === doctorId) {
       throw new ConflictException('Pasien telah terdaftar di daftar Anda!');
+    }
+
+    if (patient.isActive && patient.doctorId !== doctorId) {
+      throw new ConflictException('Pasien sedang aktif di dokter lain. Pasien harus dinonaktifkan terlebih dahulu sebelum dapat dipindahkan.');
     }
 
     return this.prisma.patient.update({
       where: { id: patient.id },
-      data: { doctorId },
+      data: { doctorId, isActive: true },
     });
   }
 
-  async findAll(userId: string, userRole: string, search?: string, condition?: PatientCondition) {
+  async deactivate(patientId: string, doctorId: string) {
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, doctorId },
+    });
+    if (!patient) throw new ForbiddenException('Pasien tidak ditemukan atau bukan pasien Anda');
+
+    return this.prisma.patient.update({
+      where: { id: patientId },
+      data: { isActive: false },
+    });
+  }
+
+  async findAll(userId: string, userRole: string, search?: string, condition?: PatientCondition, limit?: number, isActive?: boolean) {
     const baseWhere = {
       ...(search && {
         OR: [
@@ -70,6 +86,7 @@ export class PatientsService {
         ],
       }),
       ...(condition && { condition }),
+      isActive: isActive !== undefined ? isActive : true,
     };
 
     if (userRole === Role.ADMIN_PPRA) {
@@ -77,13 +94,24 @@ export class PatientsService {
         where: baseWhere,
         include: { doctor: { select: { id: true, name: true, email: true } } },
         orderBy: { createdAt: 'desc' },
+        ...(limit && { take: limit }),
       });
     }
 
     return this.prisma.patient.findMany({
       where: { ...baseWhere, doctorId: userId },
       orderBy: { createdAt: 'desc' },
+      ...(limit && { take: limit }),
     });
+  }
+
+  async findByMedRecNo(medRecNo: string) {
+    const patient = await this.prisma.patient.findUnique({
+      where: { medRecNo },
+      include: { doctor: { select: { id: true, name: true } } },
+    });
+    if (!patient) throw new NotFoundException(`Pasien dengan No. RM ${medRecNo} tidak ditemukan`);
+    return patient;
   }
 
   async findOne(id: string, userId: string, userRole: string) {
