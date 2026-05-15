@@ -3,15 +3,19 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiQuery, ApiOperation } from '@nestjs/swagger';
 import { AntibioticRequestsService } from './antibiotic-requests.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { ReviewRequestDto } from './dto/review-request.dto';
+import { UpdateRequestDto } from './dto/update-request.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -37,18 +41,39 @@ export class AntibioticRequestsController {
   @ApiOperation({ summary: 'Lihat request (Doctor: milik sendiri | Admin: semua). Filter via query params.' })
   @ApiQuery({ name: 'status', enum: ['PENDING', 'APPROVED', 'REJECTED'], required: false })
   @ApiQuery({ name: 'unclaimed', type: Boolean, required: false, description: 'Khusus Admin: tampilkan hanya request yang belum di-claim' })
+  @ApiQuery({ name: 'patientId', required: false, description: 'Filter request berdasarkan pasien' })
   findAll(
     @CurrentUser() user: any,
     @Query('status') status?: RequestStatus,
     @Query('unclaimed') unclaimed?: string,
+    @Query('patientId') patientId?: string,
   ) {
-    return this.service.findAll(user.id, user.role, status, unclaimed === 'true');
+    return this.service.findAll(user.id, user.role, status, unclaimed === 'true', patientId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Detail request beserta clinical data lengkap' })
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.service.findOne(id, user.id, user.role);
+  }
+
+  @Patch(':id')
+  @Roles(Role.DOCTOR)
+  @ApiOperation({ summary: '[DOCTOR] Edit request — hanya jika status masih PENDING' })
+  update(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() dto: UpdateRequestDto,
+  ) {
+    return this.service.update(id, user.id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.DOCTOR)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[DOCTOR] Hapus request — hanya jika status masih PENDING' })
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.service.remove(id, user.id);
   }
 
   @Patch(':id/claim')

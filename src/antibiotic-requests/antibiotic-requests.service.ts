@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { ReviewRequestDto } from './dto/review-request.dto';
+import { UpdateRequestDto } from './dto/update-request.dto';
 import { Role } from '../common/enums/role.enum';
 import { RequestStatus } from '@prisma/client';
 
@@ -61,9 +62,10 @@ export class AntibioticRequestsService {
     return request;
   }
 
-  async findAll(userId: string, userRole: string, status?: RequestStatus, unclaimed?: boolean) {
+  async findAll(userId: string, userRole: string, status?: RequestStatus, unclaimed?: boolean, patientId?: string) {
     const where: any = {};
     if (status) where.status = status;
+    if (patientId) where.patientId = patientId;
 
     if (userRole === Role.ADMIN_PPRA) {
       if (unclaimed) where.assignedAdminId = null;
@@ -91,6 +93,49 @@ export class AntibioticRequestsService {
     }
 
     return request;
+  }
+
+  async update(id: string, doctorId: string, dto: UpdateRequestDto) {
+    const request = await this.prisma.antibioticRequest.findUnique({ where: { id } });
+    if (!request) throw new NotFoundException('Request tidak ditemukan');
+
+    if (request.doctorId !== doctorId) {
+      throw new ForbiddenException('Anda tidak memiliki akses ke request ini');
+    }
+
+    if (request.status !== RequestStatus.PENDING) {
+      throw new BadRequestException('Hanya request berstatus PENDING yang dapat diedit');
+    }
+
+    const { startDate, endDate, ...rest } = dto;
+
+    return this.prisma.antibioticRequest.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(startDate !== undefined && { startDate: new Date(startDate) }),
+        ...(endDate !== undefined && { endDate: new Date(endDate) }),
+      },
+      include: requestInclude,
+    });
+  }
+
+  async remove(id: string, doctorId: string) {
+    const request = await this.prisma.antibioticRequest.findUnique({ where: { id } });
+    if (!request) throw new NotFoundException('Request tidak ditemukan');
+
+    if (request.doctorId !== doctorId) {
+      throw new ForbiddenException('Anda tidak memiliki akses ke request ini');
+    }
+
+    if (request.status !== RequestStatus.PENDING) {
+      throw new BadRequestException('Hanya request berstatus PENDING yang dapat dihapus');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.clinicalData.deleteMany({ where: { requestId: id } }),
+      this.prisma.antibioticRequest.delete({ where: { id } }),
+    ]);
   }
 
   async claim(id: string, adminId: string) {
