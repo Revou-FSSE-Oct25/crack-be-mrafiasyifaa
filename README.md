@@ -4,9 +4,9 @@
 
 AMS (Antibiotic Management System) adalah RESTful API untuk manajemen antibiotik rumah sakit berbasis PPRA (Program Pengendalian Resistensi Antimikroba). Sistem ini mengatur alur pengajuan antibiotik antara dokter (DPJP) dan admin PPRA, termasuk manajemen pasien, pengajuan data klinis, sistem claim/review admin, monitoring kondisi pasien, dan notifikasi otomatis.
 
-**Live API**: TBD
+**Live API**: https://crack-be-mrafiasyifaa.onrender.com/api
 
-**API Documentation (Swagger)**: TBD/docsv1
+**API Documentation (Swagger)**: https://crack-be-mrafiasyifaa.onrender.com/docsv1
 
 **API Reference (endpoints + request/response)**: [API_DOCS.md](./API_DOCS.md)
 

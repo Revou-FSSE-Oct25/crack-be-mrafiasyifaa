@@ -2,7 +2,7 @@
 ## Backend API Reference (untuk Frontend)
 
 > Base URL (local): `http://localhost:3000/api`
-> Base URL (production): TBD setelah deploy ke Render
+> Base URL (production): `https://crack-be-mrafiasyifaa.onrender.com/api`
 
 ---
 
