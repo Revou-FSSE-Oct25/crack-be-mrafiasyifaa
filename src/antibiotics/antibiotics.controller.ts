@@ -8,6 +8,8 @@ import {
   Param,
   Query,
   UseGuards,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { AntibioticCategory, AntibioticForm } from '@prisma/client';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
@@ -34,16 +36,23 @@ export class AntibioticsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lihat semua antibiotik (A-Z) dengan filter opsional' })
+  @ApiOperation({ summary: 'Lihat semua antibiotik (A-Z) dengan filter dan paginasi' })
   @ApiQuery({ name: 'search', required: false, description: 'Cari berdasarkan nama' })
-  @ApiQuery({ name: 'category', enum: AntibioticCategory, required: false })
+  @ApiQuery({ name: 'category', enum: AntibioticCategory, isArray: true, required: false, description: 'Filter kategori (bisa pilih lebih dari satu)' })
   @ApiQuery({ name: 'form', enum: AntibioticForm, required: false })
+  @ApiQuery({ name: 'page', required: false, description: 'Halaman (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Item per halaman (default: 10)' })
   findAll(
     @Query('search') search?: string,
-    @Query('category') category?: AntibioticCategory,
+    @Query('category') category?: AntibioticCategory | AntibioticCategory[],
     @Query('form') form?: AntibioticForm,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit = 10,
   ) {
-    return this.antibioticsService.findAll(search, category, form);
+    const categories = category
+      ? (Array.isArray(category) ? category : [category])
+      : [];
+    return this.antibioticsService.findAll(search, categories, form, page, limit);
   }
 
   @Get(':id')

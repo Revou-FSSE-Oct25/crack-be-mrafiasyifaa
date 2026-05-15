@@ -12,15 +12,38 @@ export class AntibioticsService {
     return this.prisma.antibiotic.create({ data: dto });
   }
 
-  findAll(search?: string, category?: AntibioticCategory, form?: AntibioticForm) {
-    return this.prisma.antibiotic.findMany({
-      where: {
-        ...(search && { name: { contains: search, mode: 'insensitive' } }),
-        ...(category && { category }),
-        ...(form && { form }),
+  async findAll(
+    search?: string,
+    categories?: AntibioticCategory[],
+    form?: AntibioticForm,
+    page = 1,
+    limit = 10,
+  ) {
+    const where = {
+      ...(search && { name: { contains: search, mode: 'insensitive' as const } }),
+      ...(categories?.length && { category: { in: categories } }),
+      ...(form && { form }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.antibiotic.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.antibiotic.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-      orderBy: { name: 'asc' },
-    });
+    };
   }
 
   async findOne(id: string) {
